@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "SPORS",
+    "slug": "spors-findmynet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": false,
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "bluetooth-central"],
+        "NSLocationWhenInUseUsageDescription": "SPORS needs your location to report where lost devices are found.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SPORS needs background location to find lost devices even when the app is closed.",
+        "NSBluetoothAlwaysUsageDescription": "SPORS uses Bluetooth to scan for nearby lost devices.",
+        "NSBluetoothPeripheralUsageDescription": "SPORS uses Bluetooth to advertise this device if it's lost."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.spors.findmynet",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCooMiPo2EchUsoAPOyQU0npLOfFXKZ3xs"
+        }
+      }
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["central", "peripheral"]
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow SPORS to use your location."
+        }
+      ]
+    ]
+  }
+}
