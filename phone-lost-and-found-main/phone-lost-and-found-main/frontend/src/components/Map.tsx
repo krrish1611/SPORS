@@ -62,16 +62,27 @@ const Map: React.FC<MapProps> = ({ latitude, longitude, deviceName, address }) =
             )}
           </div>
 
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg pointer-events-auto flex items-center gap-1.5 transition-all"
-          >
-            <Navigation className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Directions</span>
-            <ExternalLink className="w-3 h-3 opacity-70" />
-          </a>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            {apiKey && (
+              <button
+                onClick={() => setUseOpenStreetMap(false)}
+                className="bg-slate-950/85 hover:bg-slate-900 text-foreground border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-md flex items-center gap-1.5 transition-all"
+                title="Switch back to Google Maps"
+              >
+                <span>Google Maps View</span>
+              </button>
+            )}
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg flex items-center gap-1.5 transition-all"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Directions</span>
+              <ExternalLink className="w-3 h-3 opacity-70" />
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -109,6 +120,18 @@ const Map: React.FC<MapProps> = ({ latitude, longitude, deviceName, address }) =
       >
         <Marker position={center} title={deviceName || "Device Location"} />
       </GoogleMap>
+
+      {/* Floating Controls Overlay */}
+      <div className="absolute top-3 right-3 pointer-events-auto z-10 flex items-center gap-2">
+        <button
+          onClick={() => setUseOpenStreetMap(true)}
+          className="bg-slate-950/85 hover:bg-slate-900 text-foreground border border-primary/30 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-md flex items-center gap-1.5 transition-all"
+          title="Switch to free OpenStreetMap rendering"
+        >
+          <Navigation className="w-3 h-3 text-primary" />
+          <span>Switch to OSM View</span>
+        </button>
+      </div>
 
       {/* Floating Directions Link */}
       <div className="absolute bottom-3 right-3 pointer-events-auto z-10">
