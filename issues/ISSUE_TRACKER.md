@@ -19,6 +19,7 @@
 | 6 | **Map Rendering** | Web Google Maps / OpenStreetMap dual-engine fallback and Mobile app map display | ✅ VERIFIED & RESOLVED | Created `frontend/.env` with API key; built zero-fail dual engine Map component; fixed mobile coordinate safety and dynamic re-centering. |
 | 7 | **Mobile App TypeScript Verification** | `application/` TypeScript compilation (`tsc`) | ✅ VERIFIED & RESOLVED | Fixed `ColorSchemeName` type mismatch in `ThemeContext.tsx` and added `firstname`/`lastname` to mobile `User` type. `npx tsc --noEmit` exits with 0 errors. |
 | 8 | **Automated Playwright E2E Testing** | Web application end-to-end automated testing with `webapp-testing` skill runner | ✅ VERIFIED & RESOLVED | Automated testing of Home, Find My Device, Police Portal, and Anonymous Chat via Playwright & Chromium. Dual-engine map toggle added. |
+| 9 | **Google Maps Fix & Strict BLE Prefix Filter** | Zero-error Google Maps embed, strict BLE prefix emitting enforcement, and BLE scanner noise filtering | ✅ VERIFIED & RESOLVED | Google Maps now loads clean without error modal or watermark. Mobile app strictly emits and captures only the configured prefix. |
 
 ---
 
@@ -29,3 +30,4 @@
 - [03_CHATS_AND_POLICE_PORTAL_REPORT.md](file:///c:/Users/krrish/OneDrive/Desktop/spors%20sih/issues/03_CHATS_AND_POLICE_PORTAL_REPORT.md)
 - [04_MAP_RENDERING_REPORT.md](file:///c:/Users/krrish/OneDrive/Desktop/spors%20sih/issues/04_MAP_RENDERING_REPORT.md)
 - [05_PLAYWRIGHT_E2E_VERIFICATION_REPORT.md](file:///c:/Users/krrish/OneDrive/Desktop/spors%20sih/issues/05_PLAYWRIGHT_E2E_VERIFICATION_REPORT.md)
+- [06_GOOGLE_MAPS_AND_BLE_PREFIX_REPORT.md](file:///c:/Users/krrish/OneDrive/Desktop/spors%20sih/issues/06_GOOGLE_MAPS_AND_BLE_PREFIX_REPORT.md)

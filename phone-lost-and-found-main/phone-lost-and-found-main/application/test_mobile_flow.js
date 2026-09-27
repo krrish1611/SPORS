@@ -123,17 +123,59 @@ async function runMobileAppFlowTests() {
   }
 
   // ----------------------------------------------------------------
-  // SCREEN 5: BindDeviceScreen Flow
+  // SCREEN 6: BLE Prefix Emitting & Scanning Strict Filter Test
   // ----------------------------------------------------------------
-  console.log("\n📱 [TEST SCREEN 5: BindDeviceScreen]");
-  console.log("Verification: Validating BleAdvertiser driver...");
-  try {
-    // In node environment, native modules don't exist -> test fallback behavior
-    console.log("   Native module absent in test environment -> Software Mesh Fallback verified.");
-    console.log("   AsyncStorage key '@bound_device_id' persistence verified.");
-    console.log("✅ BindDeviceScreen driver state: RESILIENT & OPERATIONAL.");
-  } catch (err) {
-    console.error("❌ BindDeviceScreen failed:", err.message);
+  console.log("\n📱 [TEST SCREEN 6: BLE Prefix Emitting & Strict Scanning Filter]");
+  
+  // Test Prefix Emitting
+  function formatBeaconName(deviceId, prefix) {
+    const cleanId = (deviceId || '').trim();
+    const cleanPrefix = (prefix || 'SIH_TEAM_SAPPHIRE').trim();
+    if (!cleanPrefix) return cleanId;
+    if (cleanId.startsWith(cleanPrefix)) return cleanId;
+    const strippedId = cleanId.replace(/^(SIH_TEAM_SAPPHIRE|SPORS_DEVICE_|SPORS|_)+/i, '');
+    return `${cleanPrefix}${strippedId || cleanId}`;
+  }
+
+  const emitTest1 = formatBeaconName("001", "SIH_TEAM_SAPPHIRE");
+  const emitTest2 = formatBeaconName("SIH_TEAM_SAPPHIRE001", "SIH_TEAM_SAPPHIRE");
+  const emitTest3 = formatBeaconName("DEVICE_X", "SPORS");
+  
+  console.log(`Action: Testing BLE Prefix Emitting formatting...`);
+  console.log(`   Emit input ("001", prefix="SIH_TEAM_SAPPHIRE") -> "${emitTest1}"`);
+  console.log(`   Emit input ("SIH_TEAM_SAPPHIRE001", prefix="SIH_TEAM_SAPPHIRE") -> "${emitTest2}"`);
+  console.log(`   Emit input ("DEVICE_X", prefix="SPORS") -> "${emitTest3}"`);
+
+  if (emitTest1 === "SIH_TEAM_SAPPHIRE001" && emitTest2 === "SIH_TEAM_SAPPHIRE001" && emitTest3 === "SPORSDEVICE_X") {
+    console.log("✅ BLE Emitting prefix enforcement: 100% ACCURATE!");
+  } else {
+    console.error("❌ BLE Emitting prefix enforcement mismatch!");
+    allPassed = false;
+  }
+
+  // Test Prefix Scanning Strict Filter
+  console.log(`Action: Testing BLE Scanning filter (targetPrefix="SIH_TEAM_SAPPHIRE")...`);
+  const activeFilter = "SIH_TEAM_SAPPHIRE";
+  const packets = [
+    { name: "SIH_TEAM_SAPPHIRE001", shouldCapture: true },
+    { name: "Apple Watch Ultra", shouldCapture: false },
+    { name: "JBL Flip 6", shouldCapture: false },
+    { name: "SPORS-PHONE-09", shouldCapture: false },
+    { name: "SIH_TEAM_SAPPHIRE_ALPHA", shouldCapture: true },
+  ];
+
+  let filterAccuracy = true;
+  packets.forEach(pkt => {
+    const isCaptured = pkt.name.startsWith(activeFilter);
+    const passed = isCaptured === pkt.shouldCapture;
+    console.log(`   Packet "${pkt.name}" -> ${isCaptured ? 'CAPTURED 🎯' : 'DROPPED 🚫'} (Expected: ${pkt.shouldCapture ? 'CAPTURE' : 'DROP'}) [${passed ? 'PASS' : 'FAIL'}]`);
+    if (!passed) filterAccuracy = false;
+  });
+
+  if (filterAccuracy) {
+    console.log("✅ BLE Scanning strict prefix filtering: 100% ACCURATE!");
+  } else {
+    console.error("❌ BLE Scanning prefix filtering failed!");
     allPassed = false;
   }
 

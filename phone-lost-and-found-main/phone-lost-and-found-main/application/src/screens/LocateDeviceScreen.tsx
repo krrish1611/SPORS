@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { MapPin, Search, Clock } from 'lucide-react-native';
+import { MapPin, Search, Clock, Navigation } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchDeviceLocation } from '../services/api';
 
@@ -168,6 +168,19 @@ export default function LocateDeviceScreen() {
               </View>
             </View>
           </View>
+
+          {/* Open in Google Maps Navigation */}
+          <TouchableOpacity
+            style={styles.googleMapsButton}
+            onPress={() => {
+              const lat = Number(selectedDevice.location?.lat) || 28.6139;
+              const lng = Number(selectedDevice.location?.lng) || 77.2090;
+              Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+            }}
+          >
+            <Navigation color="#ffffff" size={18} style={{ marginRight: 8 }} />
+            <Text style={styles.googleMapsButtonText}>Open in Google Maps App</Text>
+          </TouchableOpacity>
         </View>
       )}
     </ScrollView>
@@ -348,5 +361,24 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  googleMapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3b82f6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 16,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleMapsButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

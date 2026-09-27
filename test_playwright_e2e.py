@@ -35,8 +35,8 @@ def run_tests():
             track_btn = page.locator("button:has-text('Track Device Location')").first
             if track_btn.is_visible():
                 track_btn.click()
-                print("  Clicked 'Track Device Location', waiting for telemetry from Aiven DB...")
-                time.sleep(3)
+                print("  Clicked 'Track Device Location', waiting for telemetry and map paint...")
+                time.sleep(5)
         
         page.screenshot(path=os.path.join(screenshots_dir, "02_find_my_device_located.png"), full_page=True)
         print("  Find My Device located state validated & screenshot captured.")

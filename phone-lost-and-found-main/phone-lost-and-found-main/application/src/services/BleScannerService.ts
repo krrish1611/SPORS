@@ -2,9 +2,11 @@ import * as TaskManager from 'expo-task-manager';
 import * as Location from 'expo-location';
 import { Platform, PermissionsAndroid } from 'react-native';
 import { BleManager, Device } from 'react-native-ble-plx';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { storeLocation } from './api';
 
 export const BACKGROUND_BLE_TASK = 'BACKGROUND_BLE_TASK';
+export const DEFAULT_SCAN_PREFIX = 'SIH_TEAM_SAPPHIRE';
 
 // A single instance of BleManager should be used
 export const bleManager = new BleManager();
@@ -34,9 +36,18 @@ const recordPush = (deviceId: string): void => {
   lastPushTimestamps.set(deviceId, Date.now());
 };
 
+/**
+ * Starts foreground BLE scanning.
+ * STRICT FILTER: Captures ONLY devices whose broadcast name starts with the specified prefix.
+ *
+ * @param onDeviceFound Callback invoked when a matching device is captured and relayed.
+ * @param onError Callback invoked if permissions or network fail.
+ * @param targetPrefix The prefix to filter on. Defaults to stored preference or 'SIH_TEAM_SAPPHIRE'.
+ */
 export const startForegroundScan = async (
   onDeviceFound?: (data: { deviceId: string; lat: number; lon: number; timestamp: string }) => void,
-  onError?: (error: string) => void
+  onError?: (error: string) => void,
+  targetPrefix?: string
 ) => {
   // 1. Android Bluetooth Runtime Permissions (Android 12+)
   if (Platform.OS === 'android' && Platform.Version >= 31) {
@@ -85,53 +96,76 @@ export const startForegroundScan = async (
     console.warn('Could not query BleManager state:', stateErr);
   }
 
-  // 4. Start Device Scan with dual name detection (localName in advert packet or name)
+  // 4. Resolve Active Target Prefix
+  let activePrefix = targetPrefix?.trim();
+  if (!activePrefix) {
+    try {
+      const stored = await AsyncStorage.getItem('@ble_scan_prefix');
+      if (stored) activePrefix = stored.trim();
+    } catch (e) {
+      console.warn('Could not read stored prefix:', e);
+    }
+  }
+  if (!activePrefix) {
+    activePrefix = DEFAULT_SCAN_PREFIX;
+  }
+
+  console.log(`📡 BLE Scanner starting with STRICT prefix filter: "${activePrefix}"`);
+
+  // 5. Start Device Scan with dual name detection (localName in advert packet or name)
   bleManager.startDeviceScan(null, null, async (error, device) => {
     if (error) {
       console.warn('BLE Scan Error:', error.message);
       return;
     }
     
-    // Look for devices broadcasting our specific prefixes (localName takes precedence in BLE packets)
-    const detectedName = device?.localName || device?.name || '';
-    if (detectedName.startsWith('SIH_TEAM_SAPPHIRE') || detectedName.startsWith('SPORS')) {
-      console.log('Found Lost Device:', detectedName);
+    // Look for devices broadcasting our specific prefix (localName takes precedence in BLE packets)
+    const detectedName = (device?.localName || device?.name || '').trim();
+    if (!detectedName) return;
+
+    // STRICT PREFIX FILTER:
+    // Only capture devices whose broadcasted name starts with the exact specified prefix.
+    // Any other bluetooth devices (headphones, fitness bands, etc.) are strictly discarded.
+    if (!detectedName.startsWith(activePrefix)) {
+      return;
+    }
+
+    console.log(`🎯 [PREFIX MATCH] Captured Lost Device "${detectedName}" matching prefix "${activePrefix}"`);
+    
+    // ---- Client-side dedup: skip if we recently pushed for this device ----
+    if (!shouldPushForDevice(detectedName)) {
+      console.log(`⏳ Skipping push for ${detectedName} (throttled — less than ${MIN_PUSH_INTERVAL_MS / 1000}s since last push)`);
+      return;
+    }
+
+    try {
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const timestamp = new Date().toISOString();
       
-      // ---- Client-side dedup: skip if we recently pushed for this device ----
-      if (!shouldPushForDevice(detectedName)) {
-        console.log(`⏳ Skipping push for ${detectedName} (throttled — less than ${MIN_PUSH_INTERVAL_MS / 1000}s since last push)`);
-        return;
-      }
+      await storeLocation(
+        detectedName,
+        location.coords.latitude,
+        location.coords.longitude,
+        timestamp
+      );
 
-      try {
-        const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        const timestamp = new Date().toISOString();
-        
-        await storeLocation(
-          detectedName,
-          location.coords.latitude,
-          location.coords.longitude,
+      // Mark this device as just-pushed
+      recordPush(detectedName);
+
+      console.log(`✅ Successfully relayed GPS coordinates for "${detectedName}" to SPORS database`);
+      
+      if (onDeviceFound) {
+        onDeviceFound({
+          deviceId: detectedName,
+          lat: location.coords.latitude,
+          lon: location.coords.longitude,
           timestamp
-        );
-
-        // Mark this device as just-pushed
-        recordPush(detectedName);
-
-        console.log('✅ Successfully reported location for:', detectedName);
-        
-        if (onDeviceFound) {
-          onDeviceFound({
-            deviceId: detectedName,
-            lat: location.coords.latitude,
-            lon: location.coords.longitude,
-            timestamp
-          });
-        }
-      } catch (err: any) {
-        const errorMsg = err?.response?.data?.error || err?.message || 'Unknown error pushing data to backend';
-        console.error('❌ Failed to get location or send to backend:', errorMsg);
-        onError?.(`Failed to push data for ${detectedName}: ${errorMsg}`);
+        });
       }
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || err?.message || 'Unknown error pushing data to backend';
+      console.error('❌ Failed to get location or send to backend:', errorMsg);
+      onError?.(`Failed to push data for ${detectedName}: ${errorMsg}`);
     }
   });
 };
@@ -145,15 +179,8 @@ export const stopForegroundScan = () => {
 // Define the background task
 TaskManager.defineTask(BACKGROUND_BLE_TASK, async () => {
   try {
-    // In background, we ideally want Location updates, or a background BLE scanner.
-    // NOTE: react-native-ble-plx background scanning has limited support on iOS without specific setup.
-    // For pure background location triggering (e.g. geofencing triggering a scan) you would use expo-location.
-    
-    // Example: fetch location
     const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     console.log('Background Task running at:', location.coords);
-    
-    // We can briefly scan here if OS allows
     return null;
   } catch (error) {
     console.error('Background Task Error:', error);
