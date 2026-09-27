@@ -56,7 +56,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     await AsyncStorage.setItem('@theme_setting', setting);
   };
 
-  const currentTheme = themeSetting === 'system' ? (systemTheme || 'light') : themeSetting;
+  const currentTheme: 'light' | 'dark' = themeSetting === 'system' ? (systemTheme === 'dark' ? 'dark' : 'light') : themeSetting;
   const colors = currentTheme === 'dark' ? darkColors : lightColors;
 
   return (

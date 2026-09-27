@@ -97,16 +97,15 @@ app.post("/storeLocation", async (req, res) => {
     let selectSql;
     let lastTimestamp = null;
 
-    // Try both possible column names for robustness
+    // Query latest location by trackid (primary key AUTO_INCREMENT)
     try {
-      selectSql = "SELECT timestamp FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1";
+      selectSql = "SELECT timestamp FROM track WHERE deviceid = ? ORDER BY trackid DESC LIMIT 1";
       const [results] = await con.query(selectSql, [deviceId]);
       if (results.length > 0) {
         lastTimestamp = results[0].timestamp;
       }
     } catch (selectErr) {
-      // If 'timestamp' column doesn't exist, try without it
-      console.warn("⚠️ Could not query by timestamp column, proceeding with insert:", selectErr.message);
+      console.warn("⚠️ Could not query track table, proceeding with insert:", selectErr.message);
     }
 
     let shouldInsert = true;
@@ -277,7 +276,7 @@ app.get("/locatedevice/:id", async (req, res) => {
   try {
     let results;
     try {
-      [results] = await con.query("SELECT * FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1", [id]);
+      [results] = await con.query("SELECT * FROM track WHERE deviceid = ? ORDER BY trackid DESC LIMIT 1", [id]);
     } catch (orderErr) {
       [results] = await con.query("SELECT * FROM track WHERE deviceid = ? LIMIT 1", [id]);
     }
@@ -335,7 +334,7 @@ app.get("/admin/stats", async (req, res) => {
       JOIN device d ON l.deviceid = d.deviceid
       LEFT JOIN (
         SELECT deviceid, latitude, longitude, timestamp,
-               ROW_NUMBER() OVER(PARTITION BY deviceid ORDER BY timestamp DESC) as rn
+               ROW_NUMBER() OVER(PARTITION BY deviceid ORDER BY trackid DESC) as rn
         FROM track
       ) t ON l.deviceid = t.deviceid AND t.rn = 1
     `;

@@ -1,5 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as Location from 'expo-location';
+import { Platform, PermissionsAndroid } from 'react-native';
 import { BleManager, Device } from 'react-native-ble-plx';
 import { storeLocation } from './api';
 
@@ -37,6 +38,28 @@ export const startForegroundScan = async (
   onDeviceFound?: (data: { deviceId: string; lat: number; lon: number; timestamp: string }) => void,
   onError?: (error: string) => void
 ) => {
+  // 1. Android Bluetooth Runtime Permissions (Android 12+)
+  if (Platform.OS === 'android' && Platform.Version >= 31) {
+    try {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      ]);
+      if (
+        granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] !== PermissionsAndroid.RESULTS.GRANTED ||
+        granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] !== PermissionsAndroid.RESULTS.GRANTED
+      ) {
+        const msg = 'Bluetooth Scan permissions denied by user';
+        console.warn(msg);
+        onError?.(msg);
+        return;
+      }
+    } catch (permErr: any) {
+      console.warn('Bluetooth permission request error:', permErr);
+    }
+  }
+
+  // 2. Location Permission Check
   const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
   if (locationStatus !== 'granted') {
     const msg = 'Permission to access location was denied';
@@ -45,33 +68,38 @@ export const startForegroundScan = async (
     return;
   }
 
-  // Check if Bluetooth is actually powered on before scanning
-  const btState = await bleManager.state();
-  if (btState === 'PoweredOff') {
-    try {
-      await bleManager.enable();
-    } catch (enableError) {
-      const msg = 'User refused to enable Bluetooth or it is unsupported';
-      console.error(msg, enableError);
-      onError?.(msg);
-      return;
+  // 3. Check if Bluetooth is actually powered on before scanning
+  try {
+    const btState = await bleManager.state();
+    if (btState === 'PoweredOff') {
+      try {
+        await bleManager.enable();
+      } catch (enableError) {
+        const msg = 'User refused to enable Bluetooth or it is unsupported';
+        console.error(msg, enableError);
+        onError?.(msg);
+        return;
+      }
     }
+  } catch (stateErr) {
+    console.warn('Could not query BleManager state:', stateErr);
   }
 
+  // 4. Start Device Scan with dual name detection (localName in advert packet or name)
   bleManager.startDeviceScan(null, null, async (error, device) => {
     if (error) {
-      // If we get an error, just log it instead of crashing the UI
       console.warn('BLE Scan Error:', error.message);
       return;
     }
     
-    // Look for devices broadcasting our specific prefix
-    if (device?.name?.startsWith('SIH_TEAM_SAPPHIRE')) {
-      console.log('Found Lost Device:', device.name);
+    // Look for devices broadcasting our specific prefixes (localName takes precedence in BLE packets)
+    const detectedName = device?.localName || device?.name || '';
+    if (detectedName.startsWith('SIH_TEAM_SAPPHIRE') || detectedName.startsWith('SPORS')) {
+      console.log('Found Lost Device:', detectedName);
       
       // ---- Client-side dedup: skip if we recently pushed for this device ----
-      if (!shouldPushForDevice(device.name)) {
-        console.log(`⏳ Skipping push for ${device.name} (throttled — less than ${MIN_PUSH_INTERVAL_MS / 1000}s since last push)`);
+      if (!shouldPushForDevice(detectedName)) {
+        console.log(`⏳ Skipping push for ${detectedName} (throttled — less than ${MIN_PUSH_INTERVAL_MS / 1000}s since last push)`);
         return;
       }
 
@@ -80,20 +108,20 @@ export const startForegroundScan = async (
         const timestamp = new Date().toISOString();
         
         await storeLocation(
-          device.name,
+          detectedName,
           location.coords.latitude,
           location.coords.longitude,
           timestamp
         );
 
         // Mark this device as just-pushed
-        recordPush(device.name);
+        recordPush(detectedName);
 
-        console.log('✅ Successfully reported location for:', device.name);
+        console.log('✅ Successfully reported location for:', detectedName);
         
         if (onDeviceFound) {
           onDeviceFound({
-            deviceId: device.name,
+            deviceId: detectedName,
             lat: location.coords.latitude,
             lon: location.coords.longitude,
             timestamp
@@ -102,7 +130,7 @@ export const startForegroundScan = async (
       } catch (err: any) {
         const errorMsg = err?.response?.data?.error || err?.message || 'Unknown error pushing data to backend';
         console.error('❌ Failed to get location or send to backend:', errorMsg);
-        onError?.(`Failed to push data for ${device.name}: ${errorMsg}`);
+        onError?.(`Failed to push data for ${detectedName}: ${errorMsg}`);
       }
     }
   });

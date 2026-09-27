@@ -96,24 +96,30 @@ export default function LocateDeviceScreen() {
       {/* Map View */}
       <View style={[styles.card, styles.mapCard]}>
         {selectedDevice ? (
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: Number(selectedDevice.location.lat),
-              longitude: Number(selectedDevice.location.lng),
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            }}
-          >
-            <Marker
-              coordinate={{
-                latitude: Number(selectedDevice.location.lat),
-                longitude: Number(selectedDevice.location.lng),
-              }}
-              title={selectedDevice.name}
-              description={selectedDevice.location.address}
-            />
-          </MapView>
+          (() => {
+            const lat = Number(selectedDevice.location?.lat) || 28.6139;
+            const lng = Number(selectedDevice.location?.lng) || 77.2090;
+            return (
+              <MapView
+                style={styles.map}
+                region={{
+                  latitude: lat,
+                  longitude: lng,
+                  latitudeDelta: 0.008,
+                  longitudeDelta: 0.008,
+                }}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: lat,
+                    longitude: lng,
+                  }}
+                  title={selectedDevice.name}
+                  description={selectedDevice.location?.address || "Unknown address"}
+                />
+              </MapView>
+            );
+          })()
         ) : (
           <View style={styles.mapPlaceholder}>
             <MapPin color="#3b82f6" size={48} style={{ opacity: 0.5, marginBottom: 16 }} />
@@ -144,7 +150,7 @@ export default function LocateDeviceScreen() {
             
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Location Address</Text>
-              <Text style={styles.detailValue}>{selectedDevice.location.address}</Text>
+              <Text style={styles.detailValue}>{selectedDevice.location?.address || "Coordinates logged via Bluetooth mesh"}</Text>
             </View>
 
             <View style={styles.detailItem}>
@@ -152,7 +158,12 @@ export default function LocateDeviceScreen() {
               <View style={styles.timeRow}>
                 <Clock color="#64748b" size={14} style={{ marginRight: 4 }} />
                 <Text style={styles.detailValue}>
-                  {new Date(selectedDevice.lastSeen).toLocaleString()}
+                  {(() => {
+                    const ts = selectedDevice.lastSeen;
+                    if (!ts) return "Recently";
+                    const d = new Date(ts);
+                    return isNaN(d.getTime()) ? ts : d.toLocaleString();
+                  })()}
                 </Text>
               </View>
             </View>

@@ -150,7 +150,7 @@ export const AnonymousChat = ({ deviceId, deviceName, sessionId, onClose }: Anon
           <div className="space-y-4">
             {messages.length === 0 && (
               <div className="text-center py-12 text-muted-foreground font-mono text-xs">
-                // No messages yet in this coordination session.
+                No messages yet in this coordination session.
                 <br />
                 Type a message below to arrange a secure station drop-off.
               </div>

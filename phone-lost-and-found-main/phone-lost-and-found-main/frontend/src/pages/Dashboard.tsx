@@ -35,6 +35,7 @@ export default function Dashboard() {
   ]);
   const [selectedChat, setSelectedChat] = useState<any>(null);
   
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [policeUsername, setPoliceUsername] = useState("");
   const [policePassword, setPolicePassword] = useState("");
 
@@ -49,6 +50,13 @@ export default function Dashboard() {
       const data = await res.json();
       if (data.success && data.devices?.length) {
         setStats({ count: data.count, devices: data.devices });
+        // Set first device with coordinates as selected
+        const withCoords = data.devices.find((d: any) => d.lat && d.lon);
+        if (withCoords) {
+          setSelectedIncident(withCoords);
+        } else {
+          setSelectedIncident(data.devices[0]);
+        }
       }
     } catch (e) {
       // Offline fallback
@@ -233,9 +241,17 @@ export default function Dashboard() {
           <div className="h-[380px] w-full">
             {stats.devices.length > 0 ? (
               <Map 
-                latitude={parseFloat(String(stats.devices[0].lat)) || 28.6139} 
-                longitude={parseFloat(String(stats.devices[0].lon)) || 77.2090} 
-                deviceName={stats.devices[0].devicename || "Active Incident"}
+                latitude={
+                  selectedIncident && selectedIncident.lat 
+                    ? (parseFloat(String(selectedIncident.lat)) || 28.6139) 
+                    : (stats.devices.find((d: any) => d.lat && d.lon)?.lat ? parseFloat(String(stats.devices.find((d: any) => d.lat && d.lon).lat)) : 28.6139)
+                } 
+                longitude={
+                  selectedIncident && selectedIncident.lon 
+                    ? (parseFloat(String(selectedIncident.lon)) || 77.2090) 
+                    : (stats.devices.find((d: any) => d.lat && d.lon)?.lon ? parseFloat(String(stats.devices.find((d: any) => d.lat && d.lon).lon)) : 77.2090)
+                } 
+                deviceName={selectedIncident?.devicename || "Active Incident"}
               />
             ) : (
               <div className="h-full flex items-center justify-center bg-secondary/30 text-xs text-muted-foreground">
@@ -246,19 +262,38 @@ export default function Dashboard() {
           
           <div className="p-4 border-t border-border bg-secondary/30 max-h-48 overflow-y-auto space-y-2 text-xs">
             <span className="font-semibold text-foreground block mb-1 text-xs">
-              Active Coordinate Pings:
+              Active Coordinate Pings (Click to focus map):
             </span>
-            {stats.devices.map((d: any) => (
-              <div key={d.deviceid} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-card/80 rounded-lg border border-border/60 gap-1 hover:border-primary/50 transition-colors">
-                <div>
-                  <span className="font-semibold text-foreground">{d.devicename || d.deviceid}</span>
-                  <span className="text-primary ml-2 font-mono text-[11px]">[{d.deviceid}]</span>
+            {stats.devices.map((d: any) => {
+              const isSelected = selectedIncident?.deviceid === d.deviceid;
+              return (
+                <div 
+                  key={d.deviceid} 
+                  onClick={() => setSelectedIncident(d)}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg border gap-1 cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'bg-primary/15 border-primary shadow-sm' 
+                      : 'bg-card/80 border-border/60 hover:border-primary/50'
+                  }`}
+                >
+                  <div>
+                    <span className="font-semibold text-foreground">{d.devicename || d.deviceid}</span>
+                    <span className="text-primary ml-2 font-mono text-[11px]">[{d.deviceid}]</span>
+                    {isSelected && (
+                      <span className="ml-2 text-[10px] uppercase font-bold text-primary px-1.5 py-0.2 rounded bg-primary/20">Active Focus</span>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground font-mono text-[11px]">
+                    {d.lat && d.lon ? (
+                      <span>GPS: {parseFloat(String(d.lat)).toFixed(4)}° N, {parseFloat(String(d.lon)).toFixed(4)}° E</span>
+                    ) : (
+                      <span className="text-amber-500 font-medium">Coordinates Pending (Mesh Ping Expected)</span>
+                    )}
+                    {" • "}Owner: <span className="text-foreground">{d.username || "anonymous"}</span>
+                  </div>
                 </div>
-                <div className="text-muted-foreground font-mono text-[11px]">
-                  GPS: {d.lat}° N, {d.lon}° E • Owner: <span className="text-foreground">{d.username || "anonymous"}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
