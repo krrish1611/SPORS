@@ -85,37 +85,70 @@ app.post("/register-device", async (req, res) => {
 app.post("/storeLocation", async (req, res) => {
   const { deviceId, latitude, longitude, timestamp } = req.body;
 
-  if (!deviceId || !latitude || !longitude || !timestamp) {
+  console.log("📥 storeLocation hit:", { deviceId, latitude, longitude, timestamp });
+
+  if (!deviceId || latitude === undefined || longitude === undefined || !timestamp) {
+    console.warn("⚠️ Missing fields:", { deviceId, latitude, longitude, timestamp });
     return res.status(400).json({ error: "Missing fields in request" });
   }
 
   try {
-    const selectSql = "SELECT timestamp FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1";
-    const [results] = await con.query(selectSql, [deviceId]);
+    // Check for the most recent entry to enforce 5-second throttle
+    let selectSql;
+    let lastTimestamp = null;
 
-    let shouldInsert = false;
-    if (results.length === 0) {
-      shouldInsert = true;
-    } else {
-      const lastTime = new Date(results[0].timestamp);
+    // Try both possible column names for robustness
+    try {
+      selectSql = "SELECT timestamp FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1";
+      const [results] = await con.query(selectSql, [deviceId]);
+      if (results.length > 0) {
+        lastTimestamp = results[0].timestamp;
+      }
+    } catch (selectErr) {
+      // If 'timestamp' column doesn't exist, try without it
+      console.warn("⚠️ Could not query by timestamp column, proceeding with insert:", selectErr.message);
+    }
+
+    let shouldInsert = true;
+    if (lastTimestamp) {
+      const lastTime = new Date(lastTimestamp);
       const now = new Date(timestamp);
       const diffSeconds = (now - lastTime) / 1000;
-      if (diffSeconds >= 5) {
-        shouldInsert = true;
+      if (diffSeconds < 5) {
+        shouldInsert = false;
       }
     }
 
     if (shouldInsert) {
-      const insertSql = "INSERT INTO track (deviceid, latitude, longitude, timestamp) VALUES (?, ?, ?, ?)";
-      await con.query(insertSql, [deviceId, latitude, longitude, timestamp]);
-      console.log(`✅ Location stored for deviceId: ${deviceId}`);
-      return res.json({ success: true, message: "Location stored successfully" });
+      // Try with 'latitude/longitude' columns first (the expected schema)
+      try {
+        const insertSql = "INSERT INTO track (deviceid, latitude, longitude, timestamp) VALUES (?, ?, ?, ?)";
+        await con.query(insertSql, [deviceId, latitude, longitude, timestamp]);
+        console.log(`✅ Location stored for deviceId: ${deviceId}`);
+        return res.json({ success: true, message: "Location stored successfully" });
+      } catch (insertErr) {
+        // If columns don't exist, try the legacy column names (lat, lon)
+        if (insertErr.code === 'ER_BAD_FIELD_ERROR') {
+          console.warn("⚠️ 'latitude/longitude' columns not found, trying 'lat/lon' fallback...");
+          try {
+            const fallbackSql = "INSERT INTO track (deviceid, lat, lon) VALUES (?, ?, ?)";
+            await con.query(fallbackSql, [deviceId, latitude, longitude]);
+            console.log(`✅ Location stored (fallback columns) for deviceId: ${deviceId}`);
+            return res.json({ success: true, message: "Location stored successfully (legacy columns)" });
+          } catch (fallbackErr) {
+            console.error("❌ Fallback insert also failed:", fallbackErr.message);
+            return res.status(500).json({ error: "Database operation failed", details: fallbackErr.message });
+          }
+        }
+        console.error("❌ Insert failed:", insertErr.message);
+        return res.status(500).json({ error: "Database operation failed", details: insertErr.message });
+      }
     } else {
       return res.json({ success: true, message: "Skipped insert, recent record exists" });
     }
   } catch (err) {
     console.error("❌ Error in storeLocation:", err);
-    return res.status(500).json({ error: "Database operation failed" });
+    return res.status(500).json({ error: "Database operation failed", details: err.message });
   }
 });
 

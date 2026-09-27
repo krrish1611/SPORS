@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, PermissionsAndroid, Pl
 import { startForegroundScan, stopForegroundScan, BACKGROUND_BLE_TASK } from '../services/BleScannerService';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { Radar, Play, Square, Wifi, Shield } from 'lucide-react-native';
+import { Radar, Play, Square, Wifi, Shield, AlertTriangle } from 'lucide-react-native';
 
 interface ScanResult {
   deviceId: string;
@@ -15,6 +15,7 @@ interface ScanResult {
 export default function ScannerScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -23,6 +24,8 @@ export default function ScannerScreen() {
   }, []);
 
   const handleDeviceFound = (device: ScanResult) => {
+    // Clear any previous error on successful detection + push
+    setLastError(null);
     setScanResults((prev) => {
       // Avoid immediate duplicates
       if (prev.length > 0 && prev[0].deviceId === device.deviceId) return prev;
@@ -30,10 +33,17 @@ export default function ScannerScreen() {
     });
   };
 
+  const handleScanError = (errorMsg: string) => {
+    setLastError(errorMsg);
+    // Auto-clear error after 8 seconds
+    setTimeout(() => setLastError(null), 8000);
+  };
+
   const toggleScan = async () => {
     if (isScanning) {
       stopForegroundScan();
       setIsScanning(false);
+      setLastError(null);
       
       const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_BLE_TASK);
       if (isRegistered) {
@@ -70,7 +80,7 @@ export default function ScannerScreen() {
         });
       }
 
-      startForegroundScan(handleDeviceFound);
+      startForegroundScan(handleDeviceFound, handleScanError);
       setIsScanning(true);
     }
   };
@@ -87,6 +97,14 @@ export default function ScannerScreen() {
           Help others by turning your device into a scanner. If you find a lost device, its location will be anonymously reported to the owner.
         </Text>
       </View>
+
+      {/* Error Banner */}
+      {lastError && (
+        <View style={styles.errorBanner}>
+          <AlertTriangle color="#ef4444" size={20} style={{ marginRight: 10 }} />
+          <Text style={styles.errorText}>{lastError}</Text>
+        </View>
+      )}
 
       {/* Network Scanner Card */}
       <View style={styles.card}>
@@ -330,5 +348,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     lineHeight: 22,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#dc2626',
+    fontWeight: '500',
+    lineHeight: 20,
   },
 });
