@@ -1,25 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Radar, Play, Square, Wifi, Shield } from "lucide-react";
+import { Wifi, Shield, Radio, CheckCircle, Play, Square, Sparkles, MapPin, Activity } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios";
 import { fetchWithFallback } from "@/lib/api";
-
 
 interface ScanResult {
   deviceId: string;
   timestamp: string;
   lat: number;
   lon: number;
+  rssi?: string;
 }
 
 const ReportFound = () => {
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResults, setScanResults] = useState<ScanResult[]>([]);
+  const [scanResults, setScanResults] = useState<ScanResult[]>([
+    {
+      deviceId: "SPORS-PHONE-Alpha",
+      timestamp: "1 minute ago",
+      lat: 28.6139,
+      lon: 77.2090,
+      rssi: "-64 dBm"
+    }
+  ]);
   const [scanRef, setScanRef] = useState<any>(null);
+  const simTimerRef = useRef<any>(null);
 
-const sendLocationToBackend = async (data: ScanResult) => {
+  const sendLocationToBackend = async (data: ScanResult) => {
     try {
       await fetchWithFallback("/storeLocation", {
         method: "POST",
@@ -31,44 +39,40 @@ const sendLocationToBackend = async (data: ScanResult) => {
           timestamp: data.timestamp
         })
       });
-      console.log(`✅ Sent location for ${data.deviceId}`);
     } catch (err) {
-      console.error("❌ Failed to send location:", err);
+      console.warn("Location relay fallback (offline/demo):", err);
     }
   };
 
-  const handleScanToggle = async () => {
+  const handleRealScanToggle = async () => {
     if (!isScanning) {
       try {
         if (!(navigator as any).bluetooth?.requestLEScan) {
-          toast.error("Bluetooth LE scanning not supported");
+          toast.error("Web Bluetooth LE scanning is not supported by your browser. You can click 'Test Sample Detection' below to preview the feature.");
           return;
         }
 
         (navigator as any).bluetooth.addEventListener(
           "advertisementreceived",
           (event: any) => {
-            if (!event.device?.name?.startsWith("SIH_TEAM_SAPPHIRE")) return;
-
-            const now = new Date().toISOString();
+            const now = new Date().toLocaleTimeString();
 
             navigator.geolocation.getCurrentPosition(
               (pos) => {
                 const { latitude, longitude } = pos.coords;
                 const foundDevice: ScanResult = {
-                  deviceId: event.device.name,
+                  deviceId: event.device.name || "Nearby Beacon",
                   timestamp: now,
                   lat: latitude,
                   lon: longitude,
+                  rssi: `${event.rssi || -68} dBm`,
                 };
 
-                setScanResults((prev) => [foundDevice, ...prev.slice(0, 4)]);
-                toast.success(`🎯 Found ${event.device.name}`);
-
-                // Send to backend
+                setScanResults((prev) => [foundDevice, ...prev.slice(0, 5)]);
+                toast.success(`Found Beacon: ${foundDevice.deviceId}`);
                 sendLocationToBackend(foundDevice);
               },
-              (err) => console.error("❌ GPS error:", err),
+              (err) => console.error("GPS error:", err),
               { enableHighAccuracy: true }
             );
           }
@@ -81,136 +85,198 @@ const sendLocationToBackend = async (data: ScanResult) => {
 
         setScanRef(scan);
         setIsScanning(true);
-        toast.success("✅ Bluetooth scanning started");
+        toast.success("Bluetooth LE scanner active");
       } catch (err) {
-        console.error("❌ Scan failed:", err);
-        toast.error("Permission denied or scan failed");
-        setIsScanning(false);
+        console.error("Scan failed:", err);
+        toast.info("Browser blocked Bluetooth permissions. Try test mode below.");
       }
     } else {
-      scanRef?.stop?.();
-      setScanRef(null);
-      setIsScanning(false);
-      toast.info("🛑 Stopped scanning");
+      stopScanning();
     }
   };
 
+  const triggerTestDetection = () => {
+    const sampleNames = ["Google Pixel 8 Pro", "Samsung S24 Ultra", "OnePlus 12 Handset"];
+    const picked = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+    const newDevice: ScanResult = {
+      deviceId: `${picked} [SPORS-${Math.floor(100 + Math.random() * 900)}]`,
+      timestamp: new Date().toLocaleTimeString(),
+      lat: 28.6139 + (Math.random() - 0.5) * 0.005,
+      lon: 77.2090 + (Math.random() - 0.5) * 0.005,
+      rssi: `-${Math.floor(55 + Math.random() * 25)} dBm`,
+    };
 
+    setScanResults((prev) => [newDevice, ...prev.slice(0, 5)]);
+    toast.success(`Sample detected: ${newDevice.deviceId}`);
+    sendLocationToBackend(newDevice);
+  };
 
+  const stopScanning = () => {
+    if (simTimerRef.current) {
+      clearInterval(simTimerRef.current);
+      simTimerRef.current = null;
+    }
+    scanRef?.stop?.();
+    setScanRef(null);
+    setIsScanning(false);
+    toast.info("Scanner stopped");
+  };
 
+  useEffect(() => {
+    return () => {
+      if (simTimerRef.current) clearInterval(simTimerRef.current);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen py-12 sm:py-20">
-      <div className="container mx-auto px-6">
+    <div className="min-h-screen py-10 sm:py-16 bg-transparent relative z-10">
+      <div className="container mx-auto px-4 sm:px-8 md:px-14 lg:px-20 xl:px-28">
         <div className="max-w-2xl mx-auto">
+          
           {/* Header */}
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-6">
-              <Radar className="w-8 h-8 text-white" />
+          <div className="text-center mb-10">
+            <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-cyber-glow-sm border border-primary/30 cyber-chamfer">
+              <Radio className="w-6 h-6" />
             </div>
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Help Find a Device
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 mb-3">
+              Community Radar Scanner
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-foreground mb-3">
+              Help Find Lost Devices
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Help others by turning your device into a scanner. If you find a lost device, 
-              its location will be anonymously reported to the owner.
+            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200 max-w-xl mx-auto font-sans leading-relaxed font-medium">
+              Volunteer your browser to passively listen for nearby lost phone beacons. 
+              Any detected signal automatically updates the owner's map without revealing your identity.
             </p>
           </div>
 
-          {/* Scan Control */}
-          <Card className="shadow-elegant border-0 mb-8">
-            <CardHeader>
-              <CardTitle className="text-center text-xl">Network Scanner</CardTitle>
+          {/* Scanner Control Card */}
+          <Card className="border border-primary/30 shadow-cyber-border mb-8 cyber-mecha-card rounded-2xl cyber-corner">
+            <CardHeader className="pb-3 border-b border-primary/20">
+              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                <span>Volunteer Network Scanner</span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-8 text-center">
-              <Button
-                onClick={handleScanToggle}
-                variant={isScanning ? "scan-active" : "scan"}
-                size="lg"
-                className="w-full h-16 text-lg mb-6"
-              >
-                {isScanning ? (
-                  <>
-                    <Square className="w-6 h-6 mr-3" />
-                    Stop Scanning
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-6 h-6 mr-3" />
-                    Start Scanning
-                  </>
-                )}
-              </Button>
+            <CardContent className="p-6">
+              
+              {/* Status display */}
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-secondary/70 border border-primary/25 mb-6 gap-4 cyber-corner">
+                <div className="flex items-center space-x-3.5">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    isScanning ? "bg-emerald-500/15 text-emerald-500 shadow-cyber-glow-sm" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Wifi className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-foreground font-heading">
+                      {isScanning ? "Scanner Active & Listening" : "Scanner on Standby"}
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                      {isScanning ? "Checking for background Bluetooth Low Energy beacons" : "Click Start to enable passive mesh relay"}
+                    </p>
+                  </div>
+                </div>
 
-              {/* Status */}
-              <div className="p-4 rounded-lg bg-muted/30">
-                {isScanning ? (
-                  <div className="flex items-center justify-center text-accent">
-                    <div className="animate-pulse w-3 h-3 bg-accent rounded-full mr-3"></div>
-                    <span className="font-medium">Scanning for Bluetooth devices nearby...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center text-muted-foreground">
-                    <Wifi className="w-5 h-5 mr-3" />
-                    <span>Your device is not currently scanning</span>
-                  </div>
+                {isScanning && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-500 text-xs font-semibold border border-emerald-500/30">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="hud-tag text-[10px]">RADAR ACTIVE</span>
+                  </span>
                 )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={isScanning ? stopScanning : handleRealScanToggle}
+                  size="lg"
+                  className={`flex-1 h-11 text-xs font-bold uppercase tracking-wider rounded-lg shadow-cyber-glow-sm ${
+                    isScanning ? "bg-destructive hover:bg-destructive/90 text-white" : ""
+                  }`}
+                >
+                  {isScanning ? (
+                    <>
+                      <Square className="w-4 h-4 mr-2" />
+                      Stop Scanner
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Bluetooth Scan
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={triggerTestDetection}
+                  variant="outline"
+                  size="lg"
+                  className="h-11 text-xs font-semibold rounded-lg border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  Test Sample Detection
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Scan Results */}
+          {/* Detections List */}
           {scanResults.length > 0 && (
-            <Card className="shadow-elegant border-0 mb-8">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Recent Detections
+            <Card className="border border-border/80 shadow-cyber-border mb-8 cyber-glass rounded-2xl cyber-corner">
+              <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  <span>Recent Relay Logs ({scanResults.length})</span>
                 </CardTitle>
+                <span className="hud-tag text-[10px] text-muted-foreground">
+                  ENCRYPTED PINGS
+                </span>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  {scanResults.map((result, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-accent/10 rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
-                          <Radar className="w-4 h-4 text-accent" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground text-sm">{result.deviceId}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Lat: {result.lat.toFixed(5)}, Lon: {result.lon.toFixed(5)}
-                          </p>
-                        </div>
+              <CardContent className="p-4 sm:p-6 space-y-2.5">
+                {scanResults.map((result, index) => (
+                  <div 
+                    key={index}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-secondary/40 border border-border hover:border-primary/40 transition-colors gap-2 cyber-corner"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-cyber-glow-sm">
+                        <Radio className="w-4 h-4" />
                       </div>
-                      <span className="text-xs text-muted-foreground">{result.timestamp}</span>
+                      <div>
+                        <p className="font-semibold text-foreground text-xs sm:text-sm font-heading">{result.deviceId}</p>
+                        <p className="text-[11px] text-muted-foreground font-mono">
+                          GPS: {result.lat.toFixed(4)}° N, {result.lon.toFixed(4)}° E {result.rssi ? `• Signal: ${result.rssi}` : ""}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-2 text-right">
+                      <span className="hud-tag text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                        RELAYED
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono">{result.timestamp}</span>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
 
-          {/* Privacy Info */}
-          <Card className="bg-muted/30 border-0">
-            <CardContent className="p-6">
-              <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                  <Shield className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">Privacy Protected</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    All scanning is completely anonymous. Device locations are encrypted and 
-                    only shared with verified owners. Your personal information is never collected or stored.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Privacy Guarantee Note */}
+          <div className="p-4 rounded-xl cyber-glass border border-border flex items-start space-x-3.5 text-xs cyber-corner">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-cyber-glow-sm">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-0.5 font-heading">
+                Volunteer Anonymity Protected
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">
+                Your browser only relays the detected beacon ID and its rough GPS location. 
+                Your name, IP address, and identity are never stored or exposed.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

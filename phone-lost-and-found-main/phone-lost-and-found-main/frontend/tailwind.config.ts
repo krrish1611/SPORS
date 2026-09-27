@@ -12,19 +12,25 @@ export default {
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
+			padding: '1.5rem',
 			screens: {
-				'2xl': '1400px'
+				'2xl': '1340px'
 			}
 		},
 		extend: {
-			backgroundImage: {
-				'gradient-primary': 'linear-gradient(135deg, hsl(217 91% 60%), hsl(180 100% 50%))',
-				'gradient-hero': 'linear-gradient(135deg, hsl(217 91% 60% / 0.1), hsl(180 100% 50% / 0.05))'
+			fontFamily: {
+				sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+				heading: ['"Plus Jakarta Sans"', 'sans-serif'],
+				tech: ['Rajdhani', 'sans-serif'],
+				mono: ['"JetBrains Mono"', 'monospace'],
 			},
 			boxShadow: {
-				'elegant': '0 10px 30px -10px hsl(217 91% 60% / 0.3)',
-				'soft': '0 4px 15px -5px hsl(217 91% 60% / 0.2)'
+				'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+				'card': '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08)',
+				'cyber-glow': '0 0 25px rgba(168, 85, 247, 0.35)',
+				'cyber-glow-sm': '0 0 12px rgba(168, 85, 247, 0.25)',
+				'cyber-border': '0 0 10px rgba(168, 85, 247, 0.2), inset 0 0 15px rgba(168, 85, 247, 0.05)',
+				'violet-soft': '0 10px 30px -10px rgba(124, 58, 237, 0.15)',
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -79,20 +85,12 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
 				}
 			},
 			animation: {
