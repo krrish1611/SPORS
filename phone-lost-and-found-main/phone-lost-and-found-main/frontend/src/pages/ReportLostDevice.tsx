@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnonymousChat } from "@/components/AnonymousChat";
 import { LoginDialog } from "@/components/LoginDialog";
+import { fetchWithFallback } from "@/lib/api";
 
 const ReportLostDevice = () => {
   const { user, isAuthenticated } = useAuth();
@@ -27,7 +28,6 @@ const ReportLostDevice = () => {
     if (!isAuthenticated || !user?.username) return;
     
     try {
-      const { fetchWithFallback } = await import('@/lib/api');
       const res = await fetchWithFallback(`/my-chats?username=${encodeURIComponent(user.username)}`);
       if (res.ok) {
         const data = await res.json();
@@ -60,7 +60,6 @@ const ReportLostDevice = () => {
     }
 
     try {
-      const { fetchWithFallback } = await import('@/lib/api');
       const res = await fetchWithFallback(`/device/${deviceId.trim()}`);
       
       if (res.ok) {

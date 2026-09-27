@@ -29,8 +29,18 @@ const FindMyDevice = () => {
       }
 
       const data = await res.json();
-      setSelectedDevice(data);
-      toast.success(`Located ${data.name}!`);
+      const normalizedDevice = {
+        id: data.id || data.deviceid || deviceId,
+        name: data.name || data.devicename || "Registered Device",
+        location: {
+          lat: typeof data.location?.lat === "number" ? data.location.lat : (Number(data.location?.lat ?? data.lat) || 28.6139),
+          lng: typeof data.location?.lng === "number" ? data.location.lng : (Number(data.location?.lng ?? data.lon) || 77.2090),
+          address: data.location?.address || data.address || "Sector 14 Technology District",
+        },
+        lastSeen: data.lastSeen || data.timestamp || data.time || "Recently",
+      };
+      setSelectedDevice(normalizedDevice);
+      toast.success(`Located ${normalizedDevice.name}!`);
     } catch (error) {
       console.error("Authenticated search error:", error);
       toast.error("Error fetching device location");
@@ -53,14 +63,14 @@ const FindMyDevice = () => {
       if (res.ok) {
         const data = await res.json();
         const normalizedDevice = {
-          id: data.deviceid || deviceId,
-          name: data.devicename || "Registered Handset",
+          id: data.id || data.deviceid || deviceId.trim(),
+          name: data.name || data.devicename || "Registered Handset",
           location: {
-            lat: data.lat || 28.6139,
-            lng: data.lon || 77.2090,
-            address: data.address || "Sector 14 Technology District",
+            lat: typeof data.location?.lat === "number" ? data.location.lat : (Number(data.location?.lat ?? data.lat) || 28.6139),
+            lng: typeof data.location?.lng === "number" ? data.location.lng : (Number(data.location?.lng ?? data.lon) || 77.2090),
+            address: data.location?.address || data.address || "Sector 14 Technology District",
           },
-          lastSeen: data.time || "Just now (Community Relay)",
+          lastSeen: data.lastSeen || data.time || "Just now (Community Relay)",
         };
         setSelectedDevice(normalizedDevice);
         toast.success(`Device ${normalizedDevice.name} located!`);
@@ -258,10 +268,10 @@ const FindMyDevice = () => {
               <div className="h-[380px] w-full relative">
                 {selectedDevice ? (
                   <Map
-                    latitude={selectedDevice.location.lat}
-                    longitude={selectedDevice.location.lng}
+                    latitude={selectedDevice.location?.lat ?? 28.6139}
+                    longitude={selectedDevice.location?.lng ?? 77.2090}
                     deviceName={selectedDevice.name}
-                    address={selectedDevice.location.address}
+                    address={selectedDevice.location?.address}
                   />
                 ) : (
                   <div className="h-full bg-secondary/40 flex items-center justify-center p-6 text-center">
@@ -307,7 +317,7 @@ const FindMyDevice = () => {
                     size="sm"
                     onClick={() => {
                       navigator.clipboard?.writeText(
-                        `Lat: ${selectedDevice.location.lat}, Lon: ${selectedDevice.location.lng} - ${selectedDevice.location.address}`
+                        `Lat: ${selectedDevice.location?.lat ?? 'N/A'}, Lon: ${selectedDevice.location?.lng ?? 'N/A'} - ${selectedDevice.location?.address ?? 'Unknown'}`
                       );
                       toast.success("Coordinates copied to clipboard");
                     }}
@@ -322,14 +332,14 @@ const FindMyDevice = () => {
                   <div className="p-3.5 bg-secondary/70 rounded-xl border border-primary/25 cyber-corner">
                     <span className="hud-tag text-slate-600 dark:text-slate-400 font-semibold block text-[10px] mb-1">STREET ADDRESS</span>
                     <span className="text-slate-900 dark:text-white font-semibold line-clamp-2">
-                      {selectedDevice.location.address}
+                      {selectedDevice.location?.address || "Unknown location"}
                     </span>
                   </div>
 
                   <div className="p-3.5 bg-secondary/70 rounded-xl border border-primary/25 cyber-corner">
                     <span className="hud-tag text-slate-600 dark:text-slate-400 font-semibold block text-[10px] mb-1">COORDINATES</span>
                     <span className="text-primary font-mono font-bold text-xs">
-                      {selectedDevice.location.lat.toFixed(4)}° N, {selectedDevice.location.lng.toFixed(4)}° E
+                      {typeof selectedDevice.location?.lat === "number" ? selectedDevice.location.lat.toFixed(4) : (selectedDevice.location?.lat || "28.6139")}° N, {typeof selectedDevice.location?.lng === "number" ? selectedDevice.location.lng.toFixed(4) : (selectedDevice.location?.lng || "77.2090")}° E
                     </span>
                   </div>
 
@@ -337,7 +347,7 @@ const FindMyDevice = () => {
                     <span className="hud-tag text-slate-600 dark:text-slate-400 font-semibold block text-[10px] mb-1">LAST SEEN PING</span>
                     <span className="text-slate-900 dark:text-white font-semibold flex items-center gap-1.5 font-mono">
                       <Clock className="w-3.5 h-3.5 text-primary" />
-                      {selectedDevice.lastSeen}
+                      {selectedDevice.lastSeen || "Recently"}
                     </span>
                   </div>
                 </div>

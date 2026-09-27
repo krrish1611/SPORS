@@ -16,7 +16,6 @@ const containerStyle = {
 const Map: React.FC<MapProps> = ({ latitude, longitude, deviceName, address }) => {
   const lat = Number(latitude);
   const lng = Number(longitude);
-  console.log("Map received props:", { lat, lng, deviceName, address });
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", // your API key
   });

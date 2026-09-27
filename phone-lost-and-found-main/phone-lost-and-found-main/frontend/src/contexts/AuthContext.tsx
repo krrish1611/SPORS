@@ -25,7 +25,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<string | false>;
+  login: (username: string, password: string) => Promise<string | false>;
   logout: () => void;
   isAuthenticated: boolean;
   addDeviceToUser: (device: Device) => void;
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<string | false> => {
   try {
     const response = await fetchWithFallback("/login", {
       method: "POST",

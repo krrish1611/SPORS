@@ -116,11 +116,11 @@ export const AnonymousChat = ({ deviceId, deviceName, sessionId, onClose }: Anon
                   Anonymous Return Chat
                 </CardTitle>
                 <span className="hud-tag text-[9px] py-0">
-                  [E2EE // ACTIVE]
+                  E2EE Encrypted
                 </span>
               </div>
               <p className="text-xs text-muted-foreground truncate font-mono">
-                DEVICE // {deviceName} <span className="text-primary font-bold">[{deviceId}]</span>
+                Device: {deviceName} <span className="text-primary font-bold">({deviceId})</span>
               </p>
             </div>
           </div>
@@ -189,7 +189,7 @@ export const AnonymousChat = ({ deviceId, deviceName, sessionId, onClose }: Anon
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Type your message to finder / owner..."
               className="flex-1 h-10 text-xs font-tech bg-background"
             />

@@ -274,26 +274,31 @@ app.get("/device/:id", async (req, res) => {
 
 app.get("/locatedevice/:id", async (req, res) => {
   const { id } = req.params;
-  const sql = "SELECT * FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1";
-
   try {
-    const [results] = await con.query(sql, [id]);
-    if (results.length === 0) {
+    let results;
+    try {
+      [results] = await con.query("SELECT * FROM track WHERE deviceid = ? ORDER BY timestamp DESC LIMIT 1", [id]);
+    } catch (orderErr) {
+      [results] = await con.query("SELECT * FROM track WHERE deviceid = ? LIMIT 1", [id]);
+    }
+    if (!results || results.length === 0) {
       return res.status(404).json({ success: false, message: "Device not found" });
     }
     const device = results[0];
+    const lat = device.latitude !== undefined && device.latitude !== null ? device.latitude : (device.lat ?? 0);
+    const lng = device.longitude !== undefined && device.longitude !== null ? device.longitude : (device.lon ?? 0);
     res.json({
       id: device.deviceid,
-      name: device.devicename || "Unknown device",
+      name: device.devicename || `Device (${device.deviceid})`,
       location: {
-        lat: device.latitude,
-        lng: device.longitude,
+        lat: Number(lat),
+        lng: Number(lng),
         address: device.address || "Unknown location",
       },
-      lastSeen: device.timestamp || "Unknown",
+      lastSeen: device.timestamp || device.time || "Unknown",
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error in locatedevice:", err);
     return res.status(500).json({ success: false, error: "Database error" });
   }
 });

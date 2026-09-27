@@ -69,9 +69,6 @@ export const LoginDialog = () => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md cyber-mecha-card cyber-corner font-tech border-primary/40 shadow-2xl p-6">
         <DialogHeader>
-          <div className="hud-tag inline-block self-start text-[10px] mb-1">
-            [ACCESS_CONTROL // AUTH_GATEWAY]
-          </div>
           <DialogTitle className="text-xl font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
             Sign in to SPORS
@@ -83,7 +80,7 @@ export const LoginDialog = () => {
 
         {/* Quick Demo Pre-fill Chips */}
         <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-card/60 border border-border/80 text-xs">
-          <span className="text-muted-foreground text-[11px] font-mono font-bold">// QUICK DEMO:</span>
+          <span className="text-muted-foreground text-[11px] font-mono font-bold">Quick Demo:</span>
           <button
             type="button"
             onClick={() => handleFillDemo("sample", "sample")}
