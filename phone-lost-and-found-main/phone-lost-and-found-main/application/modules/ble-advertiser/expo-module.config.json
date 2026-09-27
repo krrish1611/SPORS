@@ -1,0 +1,7 @@
+{
+  "name": "ble-advertiser",
+  "platforms": ["android", "ios"],
+  "android": {
+    "package": "expo.modules.bleadvertiser.BleAdvertiserModule"
+  }
+}

@@ -1,12 +1,14 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules } from 'react-native';
+import BleAdvertiserModule from '../../modules/ble-advertiser';
 
-const { BleAdvertiser } = NativeModules;
+// Try both local Expo Module and legacy NativeModules bridge
+const NativeAdvertiser = BleAdvertiserModule || NativeModules.BleAdvertiser;
 
 /**
  * Checks whether native hardware BLE advertising module is linked and available.
  */
 export const isNativeAdvertisingSupported = (): boolean => {
-  return !!(BleAdvertiser && typeof BleAdvertiser.startAdvertising === 'function');
+  return !!(NativeAdvertiser && typeof NativeAdvertiser.startAdvertising === 'function');
 };
 
 /**
@@ -17,7 +19,7 @@ export const isNativeAdvertisingSupported = (): boolean => {
 export const startAdvertising = async (deviceId: string): Promise<string> => {
   if (isNativeAdvertisingSupported()) {
     try {
-      const res = await BleAdvertiser.startAdvertising(deviceId);
+      const res = await NativeAdvertiser.startAdvertising(deviceId);
       return res || `Hardware BLE Advertising started for ${deviceId}`;
     } catch (e: any) {
       console.warn("Native BLE Advertiser returned an error:", e);
@@ -36,7 +38,7 @@ export const startAdvertising = async (deviceId: string): Promise<string> => {
 export const stopAdvertising = async (): Promise<string> => {
   if (isNativeAdvertisingSupported()) {
     try {
-      const res = await BleAdvertiser.stopAdvertising();
+      const res = await NativeAdvertiser.stopAdvertising();
       return res || "Hardware BLE Advertising stopped";
     } catch (e: any) {
       console.warn("Native BLE Advertiser stop error:", e);
